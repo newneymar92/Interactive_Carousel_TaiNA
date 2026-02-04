@@ -306,7 +306,7 @@ useEffect(() => {
 
 ---
 
-## 📱 Responsive Design
+## Responsive Design
 
 The carousel adapts to different screen sizes:
 
