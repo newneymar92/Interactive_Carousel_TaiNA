@@ -1,0 +1,74 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.app-header h1 {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+}
+
+.app-subtitle {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  font-weight: 400;
+}
+
+.app-main {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  justify-content: center;
+}
+
+.app-footer {
+  margin-top: 40px;
+  text-align: center;
+}
+
+.app-footer p {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .app {
+    padding: 20px 10px;
+  }
+  
+  .app-header h1 {
+    font-size: 1.75rem;
+  }
+  
+  .app-subtitle {
+    font-size: 0.875rem;
+    padding: 0 20px;
+  }
+  
+  .app-header {
+    margin-bottom: 24px;
+  }
+  
+  .app-footer {
+    margin-top: 24px;
+  }
+}
