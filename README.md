@@ -19,7 +19,7 @@ A reusable, fully-featured carousel component built with React and TypeScript. S
 
 1. **Clone the repository** (or navigate to the project folder):
    ```bash
-   cd HomeTestCocCoc
+   cd Interactive_Carousel_TaiNA
    ```
 
 2. **Install dependencies**:
@@ -59,23 +59,25 @@ The production files will be output to the `dist/` directory.
 ## 📁 Project Structure
 
 ```
-HomeTestCocCoc/
+Interactive_Carousel_TaiNA/
 ├── src/
 │   ├── components/
 │   │   └── Carousel/
-│   │       ├── Carousel.tsx      # Main carousel component
-│   │       ├── Carousel.css      # Carousel styles & animations
-│   │       └── index.ts          # Clean exports
-│   ├── App.tsx                   # Demo application
-│   ├── App.css                   # App-level styles
-│   ├── index.css                 # Global base styles
-│   └── main.tsx                  # React entry point
-├── public/                       # Static assets
-├── index.html                    # HTML template
-├── package.json                  # Dependencies & scripts
-├── tsconfig.json                 # TypeScript configuration
-├── vite.config.ts                # Vite configuration
-└── README.md                     # This file
+│   │       ├── Carousel.tsx          # Main carousel component
+│   │       ├── Carousel.css          # Carousel styles & animations
+│   │       ├── Carousel.constants.ts # Shared layout / timing constants
+│   │       ├── Carousel.model.ts     # Shared interfaces & types
+│   │       └── index.ts              # Clean exports
+│   ├── App.tsx                       # Demo application
+│   ├── App.css                       # App-level styles
+│   ├── index.css                     # Global base styles
+│   └── main.tsx                      # React entry point
+├── public/                           # Static assets
+├── index.html                        # HTML template
+├── package.json                      # Dependencies & scripts
+├── tsconfig.json                     # TypeScript configuration
+├── vite.config.ts                    # Vite configuration
+└── README.md                         # This file
 ```
 
 ### Key Files
@@ -83,7 +85,9 @@ HomeTestCocCoc/
 | File | Purpose |
 |------|---------|
 | `Carousel.tsx` | Core component logic: infinite loop, drag/swipe handling, auto-slide, click prevention |
-| `Carousel.css` | Visual styling, animations, responsive breakpoints, cursor states |
+| `Carousel.css` | Visual styling, animations, responsive helpers, cursor states |
+| `Carousel.constants.ts` | Centralized layout & animation constants (card size, design viewport, timing) |
+| `Carousel.model.ts` | Shared TypeScript interfaces (`CarouselItem`, `CarouselProps`) |
 | `App.tsx` | Demo implementation with sample data |
 
 ---
@@ -107,81 +111,87 @@ HomeTestCocCoc/
 
 ### Mouse Drag (Desktop)
 
-The drag interaction is implemented using native mouse events without any external libraries:
+Drag được cài đặt thuần bằng native events, với một bộ handler dùng chung cho cả mouse và touch:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  User Action          →  Event Handler    →  State Update       │
+│  User Action          →  Shared handler       →  State Update   │
 ├─────────────────────────────────────────────────────────────────┤
-│  mousedown on track   →  handleMouseDown  →  isDragging = true  │
-│                                              dragStartX = e.clientX
-│                                              dragStartTime = now │
-├─────────────────────────────────────────────────────────────────┤
-│  mousemove (global)   →  handleMouseMove  →  dragOffset = deltaX│
-│                                              hasDragged = true   │
-├─────────────────────────────────────────────────────────────────┤
-│  mouseup (global)     →  handleMouseUp    →  Calculate velocity │
-│                                              Trigger slide if    │
-│                                              deltaX >= 40px OR   │
-│                                              velocity > 0.5      │
+│  mousedown on track   →  startDrag(clientX)   → isDragging=true │
+│  mousemove (window)   →  moveDrag(clientX)    → dragOffset=ΔX   │
+│  mouseup   (window)   →  endDrag(clientX)     → slide logic     │
 └─────────────────────────────────────────────────────────────────┘
+```
+
+```typescript
+// Shared drag handlers (used by both mouse & touch)
+const startDrag = useCallback((clientX: number) => {
+  setIsDragging(true);
+  setHasDragged(false);
+  dragStartX.current = clientX;
+  dragStartTime.current = Date.now();
+}, []);
+
+const moveDrag = useCallback((clientX: number) => {
+  if (!isDragging) return;
+  const deltaX = clientX - dragStartX.current;
+  setDragOffset(deltaX);
+  if (Math.abs(deltaX) > 5) setHasDragged(true);
+}, [isDragging]);
+
+const endDrag = useCallback((clientX: number) => {
+  if (!isDragging) return;
+  const deltaX = clientX - dragStartX.current;
+  const deltaTime = Date.now() - dragStartTime.current;
+  const velocity = Math.abs(deltaX) / deltaTime;
+
+  setIsDragging(false);
+  setDragOffset(0);
+
+  const shouldSlide = Math.abs(deltaX) >= minDragDistance || velocity > 0.5;
+  if (shouldSlide) {
+    deltaX > 0 ? slidePrev() : slideNext();
+  }
+
+  setTimeout(() => setHasDragged(false), 100);
+}, [isDragging, minDragDistance, slideNext, slidePrev]);
+
+// Mouse events chỉ việc chuyển e.clientX vào handler dùng chung
+const handleMouseDown = (e: React.MouseEvent) => {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  startDrag(e.clientX);
+};
 ```
 
 **Key Implementation Details:**
 
-1. **Global Event Listeners**: `mousemove` and `mouseup` are attached to `window` (not the carousel element) to ensure drag continues even if the cursor leaves the carousel bounds.
-
-2. **Real-time Visual Feedback**: During drag, `dragOffset` is added to the CSS `transform`, with `transition: none` for instant response.
-
-3. **Velocity Detection**: We track `dragStartTime` and calculate velocity as `|deltaX| / deltaTime`. Fast flicks (velocity > 0.5) trigger slides even if distance < 40px.
-
-```typescript
-// From Carousel.tsx - Mouse event handlers
-const handleMouseDown = (e: React.MouseEvent) => {
-  if (e.button !== 0) return; // Only left click
-  e.preventDefault();
-  setIsDragging(true);
-  setHasDragged(false);
-  dragStartX.current = e.clientX;
-  dragStartTime.current = Date.now();
-};
-
-const handleMouseUp = useCallback((e: MouseEvent) => {
-  const deltaX = e.clientX - dragStartX.current;
-  const deltaTime = Date.now() - dragStartTime.current;
-  const velocity = Math.abs(deltaX) / deltaTime;
-  
-  // Trigger slide if distance OR velocity threshold met
-  const shouldSlide = Math.abs(deltaX) >= minDragDistance || velocity > 0.5;
-  
-  if (shouldSlide) {
-    deltaX > 0 ? slidePrev() : slideNext();
-  }
-}, [minDragDistance, slideNext, slidePrev]);
-```
+1. **Global Event Listeners**: `mousemove` và `mouseup` được attach lên `window` nên drag không bị ngắt khi trượt ra ngoài vùng carousel.
+2. **Real-time Feedback**: Trong khi drag, `dragOffset` được cộng thẳng vào `transform`, `transition` bị tắt để phản hồi ngay lập tức.
+3. **Velocity Detection**: Dùng `dragStartTime` để tính `|deltaX| / deltaTime`; flick nhanh vẫn trượt dù chưa đủ 40px.
 
 ### Touch Swipe (Mobile)
 
-Touch interactions mirror the mouse implementation but use Touch Events:
+Touch sử dụng cùng bộ handler phía trên, chỉ khác nguồn toạ độ và event:
 
-| Mouse Event | Touch Event | Notes |
-|-------------|-------------|-------|
-| `mousedown` | `touchstart` | `e.touches[0].clientX` for position |
-| `mousemove` | `touchmove` | Attached globally with `{ passive: false }` |
-| `mouseup` | `touchend` | Use `e.changedTouches[0]` for final position |
+| Mouse Event | Touch Event | Handler dùng chung | Ghi chú |
+|-------------|-------------|--------------------|--------|
+| `mousedown` | `touchstart` | `startDrag(clientX)` | `e.touches[0].clientX` |
+| `mousemove` | `touchmove`  | `moveDrag(clientX)`  | global listener với `{ passive: false }` |
+| `mouseup`   | `touchend`   | `endDrag(clientX)`   | `e.changedTouches[0].clientX` |
 
-**Touch-Specific Considerations:**
-
-```css
-/* From Carousel.css */
-.carousel-container {
-  touch-action: pan-y pinch-zoom;  /* Allow vertical scroll, prevent horizontal */
-  user-select: none;               /* Prevent text selection during swipe */
-}
+```tsx
+const handleTouchStart = (e: React.TouchEvent) => {
+  startDrag(e.touches[0].clientX);
+};
 ```
 
-- `touch-action: pan-y pinch-zoom` allows vertical scrolling while the carousel captures horizontal swipes
-- Touch events are added with `{ passive: false }` to allow `preventDefault()` if needed
+```css
+.carousel-container {
+  touch-action: pan-y pinch-zoom;  /* Cho phép scroll dọc, chặn swipe ngang mặc định */
+  user-select: none;               /* Tránh select text khi vuốt */
+}
+```
 
 ---
 
@@ -201,7 +211,7 @@ The infinite loop is achieved by **cloning slides** at both ends:
 
 **How it works:**
 
-1. **Extended Array**: We prepend clones of the last N slides and append clones of the first N slides (where N = viewport width / card width + 1).
+1. **Extended Array**: We prepend clones of the last N slides and append clones of the first N slides (where N ≈ number of visible cards + buffer).
 
 2. **Initial Position**: Start at the first "real" slide (index = cloneCount).
 
@@ -308,24 +318,54 @@ useEffect(() => {
 
 ## Responsive Design
 
-The carousel adapts to different screen sizes:
+The carousel keeps the **2.5-card layout** consistent while still adapting to any screen width:
 
-| Breakpoint | Behavior |
-|------------|----------|
-| > 850px | Full 750px viewport, arrows outside carousel |
-| 600-850px | Full-width viewport, arrows inside carousel |
-| < 600px | Single card view, compact indicators |
+- The design-time viewport is 750px wide with 300px cards → \(750 / 300 = 2.5\) cards.
+- At runtime we measure the actual container width and compute:
+  \[ \text{cardWidth} = \min\left(\frac{\text{containerWidth}}{\text{VISIBLE\_CARDS}}, \text{CARD\_WIDTH}\right) \]
+- The track translation and card styles all use this `cardWidth`, so we always see ~2.5 cards, even on mobile.
 
-```css
-@media (max-width: 850px) {
-  .carousel-container {
-    max-width: 100%;
-    height: auto;
-    aspect-ratio: 750 / 300;
-  }
-  .carousel-nav-prev { left: 10px; }
-  .carousel-nav-next { right: 10px; }
-}
+```typescript
+// From Carousel.tsx - responsive card sizing
+const containerRef = useRef<HTMLDivElement>(null);
+const [cardWidth, setCardWidth] = useState(CARD_WIDTH);
+
+const recalcCardWidth = useCallback(() => {
+  const container = containerRef.current;
+  if (!container) return;
+
+  const containerWidth = container.clientWidth;
+  const ideal = containerWidth / VISIBLE_CARDS; // VISIBLE_CARDS = 2.5
+  setCardWidth(Math.min(ideal, CARD_WIDTH));
+}, []);
+
+useEffect(() => {
+  recalcCardWidth();
+  window.addEventListener('resize', recalcCardWidth);
+  return () => window.removeEventListener('resize', recalcCardWidth);
+}, [recalcCardWidth]);
+
+// Usage in JSX
+<div
+  ref={containerRef}
+  className="carousel-container"
+  style={{ height: `${cardWidth}px` }}
+>
+  <div
+    className="carousel-track"
+    style={{ transform: `translateX(${translateX}px)` }}
+  >
+    {extendedItems.map((item) => (
+      <div
+        key={item._key}
+        className="carousel-card"
+        style={{ width: `${cardWidth}px`, height: `${cardWidth}px` }}
+      >
+        ...
+      </div>
+    ))}
+  </div>
+</div>
 ```
 
 ---

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from '../../assets/icons';
-import { ANIMATION_DURATION, CARD_GAP, CARD_WIDTH, VIEWPORT_WIDTH } from './Carousel.constants';
+import { ANIMATION_DURATION, CARD_GAP, CARD_WIDTH, VISIBLE_CARDS } from './Carousel.constants';
 import './Carousel.css';
 import { type CarouselItem, type CarouselProps } from './Carousel.model';
 
@@ -9,9 +9,34 @@ export function Carousel({
   autoSlideInterval = 3000,
   minDragDistance = 40,
 }: CarouselProps) {
-  // For infinite loop, we clone items at the beginning and end
-  // Clone last few items at the start and first few items at the end
-  const cloneCount = Math.ceil(VIEWPORT_WIDTH / CARD_WIDTH) + 1;
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Card width is responsive: always try to keep VISIBLE_CARDS cards in viewport
+  const [cardWidth, setCardWidth] = useState(CARD_WIDTH);
+
+  const recalcCardWidth = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const containerWidth = container.clientWidth;
+    if (!containerWidth) return;
+
+    const idealCardWidth = containerWidth / VISIBLE_CARDS;
+    // Don't exceed design card width to keep look consistent on very large screens
+    const nextWidth = Math.min(idealCardWidth, CARD_WIDTH);
+    setCardWidth(nextWidth);
+  }, []);
+
+  // Recalculate on mount and on window resize
+  useEffect(() => {
+    recalcCardWidth();
+    window.addEventListener('resize', recalcCardWidth);
+    return () => window.removeEventListener('resize', recalcCardWidth);
+  }, [recalcCardWidth]);
+
+  // For infinite loop, we clone items at the beginning and end.
+  // We only need a few clones: visible cards (2.5) rounded up, plus one buffer.
+  const cloneCount = Math.ceil(VISIBLE_CARDS) + 1;
 
   const extendedItems = [
     // --- Clone cloneCount items at the start ---
@@ -94,9 +119,9 @@ export function Carousel({
 
   // Calculate the translation for the track
   const translateX = useMemo(() => {
-    const baseTranslate = -(currentIndex * (CARD_WIDTH + CARD_GAP));
+    const baseTranslate = -(currentIndex * (cardWidth + CARD_GAP));
     return baseTranslate + dragOffset;
-  }, [currentIndex, dragOffset]);
+  }, [currentIndex, dragOffset, cardWidth]);
 
 
   // Handle infinite loop repositioning
@@ -277,7 +302,9 @@ export function Carousel({
   return (
     <div className="carousel-wrapper">
       <div
+        ref={containerRef}
         className={`carousel-container ${isDragging ? 'is-dragging' : ''}`}
+        style={{ height: `${cardWidth}px` }}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
@@ -297,6 +324,7 @@ export function Carousel({
             <div
               key={item._key}
               className="carousel-card"
+              style={{ width: `${cardWidth}px`, height: `${cardWidth}px` }}
               onClick={() => handleCardClick(item)}
               role="button"
               tabIndex={0}
