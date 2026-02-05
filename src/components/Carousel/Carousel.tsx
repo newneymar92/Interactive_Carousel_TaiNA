@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import './Carousel.css';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from '../../assets/icons';
+import './Carousel.css';
 
 export interface CarouselItem {
   id: number;
@@ -109,7 +109,7 @@ export function Carousel({
   }, [normalizeIndex]);
 
   // Calculate the translation for the track
-  const getTranslateX = useCallback(() => {
+  const translateX = useMemo(() => {
     const baseTranslate = -(currentIndex * (CARD_WIDTH + CARD_GAP));
     return baseTranslate + dragOffset;
   }, [currentIndex, dragOffset]);
@@ -304,7 +304,7 @@ export function Carousel({
           ref={trackRef}
           className="carousel-track"
           style={{
-            transform: `translateX(${getTranslateX()}px)`,
+            transform: `translateX(${translateX}px)`,
             transition: trackTransition,
           }}
           onMouseDown={handleMouseDown}
