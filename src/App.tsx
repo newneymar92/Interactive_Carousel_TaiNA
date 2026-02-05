@@ -1,4 +1,4 @@
-import { Carousel, CarouselItem } from './components/Carousel';
+import { Carousel, type CarouselItem } from './components/Carousel';
 import './App.css';
 
 const carouselData: CarouselItem[] = [
