@@ -340,12 +340,11 @@ export function Carousel({
 
       {/* Navigation dots */}
       <div className="carousel-indicators">
-        {items.map((_, index) => (
+        {items.map((item, index) => (
           <button
-            key={index}
+            key={item.id}
             className={`carousel-indicator ${getRealIndex() === index ? 'active' : ''}`}
             onClick={() => slideTo(cloneCount + index)}
-            aria-label={`Go to slide ${index + 1}`}
           />
         ))}
       </div>
@@ -355,7 +354,6 @@ export function Carousel({
       <button
         className="carousel-nav carousel-nav-prev"
         onClick={slidePrev}
-        aria-label="Previous slide"
       >
         <ChevronLeftIcon />
       </button>
@@ -363,7 +361,6 @@ export function Carousel({
       <button
         className="carousel-nav carousel-nav-next"
         onClick={slideNext}
-        aria-label="Next slide"
       >
         <ChevronRightIcon />
       </button>
