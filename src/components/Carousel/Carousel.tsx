@@ -186,20 +186,18 @@ export function Carousel({
     };
   }, [isHovering, isDragging, isTabVisible, slideNext, autoSlideInterval]);
 
-  // Mouse drag handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Only left click
-    e.preventDefault();
+  // Shared drag handlers
+  const startDrag = useCallback((clientX: number) => {
     setIsDragging(true);
     setHasDragged(false);
-    dragStartX.current = e.clientX;
+    dragStartX.current = clientX;
     dragStartTime.current = Date.now();
-  };
+  }, []);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  const moveDrag = useCallback((clientX: number) => {
     if (!isDragging) return;
 
-    const deltaX = e.clientX - dragStartX.current;
+    const deltaX = clientX - dragStartX.current;
     setDragOffset(deltaX);
 
     if (Math.abs(deltaX) > 5) {
@@ -207,10 +205,10 @@ export function Carousel({
     }
   }, [isDragging]);
 
-  const handleMouseUp = useCallback((e: MouseEvent) => {
+  const endDrag = useCallback((clientX: number) => {
     if (!isDragging) return;
 
-    const deltaX = e.clientX - dragStartX.current;
+    const deltaX = clientX - dragStartX.current;
     const deltaTime = Date.now() - dragStartTime.current;
     const velocity = Math.abs(deltaX) / deltaTime;
 
@@ -234,50 +232,33 @@ export function Carousel({
     }, 100);
   }, [isDragging, minDragDistance, slideNext, slidePrev]);
 
-  // Touch handlers
+  // Mouse event handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Only left click
+    e.preventDefault();
+    startDrag(e.clientX);
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    moveDrag(e.clientX);
+  }, [moveDrag]);
+
+  const handleMouseUp = useCallback((e: MouseEvent) => {
+    endDrag(e.clientX);
+  }, [endDrag]);
+
+  // Touch event handlers
   const handleTouchStart = (e: React.TouchEvent) => {
-    setIsDragging(true);
-    setHasDragged(false);
-    dragStartX.current = e.touches[0].clientX;
-    dragStartTime.current = Date.now();
+    startDrag(e.touches[0].clientX);
   };
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!isDragging) return;
-
-    const deltaX = e.touches[0].clientX - dragStartX.current;
-    setDragOffset(deltaX);
-
-    if (Math.abs(deltaX) > 5) {
-      setHasDragged(true);
-    }
-  }, [isDragging]);
+    moveDrag(e.touches[0].clientX);
+  }, [moveDrag]);
 
   const handleTouchEnd = useCallback((e: TouchEvent) => {
-    if (!isDragging) return;
-
-    const touch = e.changedTouches[0];
-    const deltaX = touch.clientX - dragStartX.current;
-    const deltaTime = Date.now() - dragStartTime.current;
-    const velocity = Math.abs(deltaX) / deltaTime;
-
-    setIsDragging(false);
-    setDragOffset(0);
-
-    const shouldSlide = Math.abs(deltaX) >= minDragDistance || velocity > 0.5;
-
-    if (shouldSlide) {
-      if (deltaX > 0) {
-        slidePrev();
-      } else {
-        slideNext();
-      }
-    }
-
-    setTimeout(() => {
-      setHasDragged(false);
-    }, 100);
-  }, [isDragging, minDragDistance, slideNext, slidePrev]);
+    endDrag(e.changedTouches[0].clientX);
+  }, [endDrag]);
 
   // Add/remove global event listeners for drag
   useEffect(() => {
