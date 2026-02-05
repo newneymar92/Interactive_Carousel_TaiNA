@@ -1,23 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from '../../assets/icons';
+import { ANIMATION_DURATION, CARD_GAP, CARD_WIDTH, VIEWPORT_WIDTH } from './Carousel.constants';
 import './Carousel.css';
-
-export interface CarouselItem {
-  id: number;
-  title: string;
-  image: string;
-  landing_page: string;
-}
-
-interface CarouselProps {
-  items: CarouselItem[];
-  autoSlideInterval?: number;
-  minDragDistance?: number;
-}
-
-const CARD_WIDTH = 300;
-const CARD_GAP = 0;
-const VIEWPORT_WIDTH = 750;
+import { type CarouselItem, type CarouselProps } from './Carousel.model';
 
 export function Carousel({
   items,
@@ -56,7 +41,6 @@ export function Carousel({
   // isTabVisible: Whether the tab is currently visible
   const [isTabVisible, setIsTabVisible] = useState(true);
 
-  const trackRef = useRef<HTMLDivElement>(null);
   const dragStartX = useRef(0);
   const dragStartTime = useRef(0);
   const autoSlideTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -114,9 +98,6 @@ export function Carousel({
     return baseTranslate + dragOffset;
   }, [currentIndex, dragOffset]);
 
-  // Calculate transition style based on current state
-  const SLIDE_TRANSITION = 'transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)';
-  const trackTransition = isDragging ? 'none' : isTransitioning ? SLIDE_TRANSITION : 'none';
 
   // Handle infinite loop repositioning
   const handleTransitionEnd = useCallback(() => {
@@ -301,11 +282,12 @@ export function Carousel({
         onMouseLeave={() => setIsHovering(false)}
       >
         <div
-          ref={trackRef}
           className="carousel-track"
           style={{
             transform: `translateX(${translateX}px)`,
-            transition: trackTransition,
+            transition: isTransitioning && !isDragging
+              ? `transform ${ANIMATION_DURATION}s cubic-bezier(0.25, 0.1, 0.25, 1)`
+              : 'none',
           }}
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
@@ -328,6 +310,7 @@ export function Carousel({
                 src={item.image}
                 alt={item.title}
                 className="carousel-card-image"
+                style={{ transition: `transform ${ANIMATION_DURATION}s ease` }}
                 draggable={false}
               />
               <div className="carousel-card-overlay">

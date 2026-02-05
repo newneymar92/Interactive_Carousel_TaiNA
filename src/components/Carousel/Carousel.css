@@ -62,7 +62,6 @@
   height: 100%;
   object-fit: cover;
   pointer-events: none;
-  transition: transform 0.4s ease;
 }
 
 .carousel-container:not(.is-dragging) .carousel-card:hover .carousel-card-image {
